@@ -7,7 +7,7 @@ class_names = [
     'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
 ]
 dataset_type = 'NuScenesDataset'
-data_root = 'data/nuscenes/'
+data_root = '/home/data/nuscenes/'
 # Input modality for nuScenes dataset, this is consistent with the submission
 # format which requires the information in input_modality.
 input_modality = dict(
@@ -139,4 +139,4 @@ data = dict(
 # Since the models are trained by 24 epochs by default, we set evaluation
 # interval to be 24. Please change the interval accordingly if you do not
 # use a default schedule.
-evaluation = dict(interval=24, pipeline=eval_pipeline)
+evaluation = dict(interval=1, pipeline=eval_pipeline)
