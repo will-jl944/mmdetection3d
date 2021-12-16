@@ -50,11 +50,9 @@ class AcgDataset(Custom3DDataset):
                  classes=None,
                  modality=None,
                  box_type_3d='LiDAR',
-                 use_valid_flag=False,
                  filter_empty_gt=True,
                  test_mode=False,
                  pcd_limit_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]):
-        self.use_valid_flag = use_valid_flag
         super().__init__(
             data_root=data_root,
             ann_file=ann_file,
@@ -83,11 +81,7 @@ class AcgDataset(Custom3DDataset):
                 otherwise, store empty list.
         """
         info = self.data_infos[idx]
-        if self.use_valid_flag:
-            mask = info['valid_flag']
-            gt_names = set(info['gt_names'][mask])
-        else:
-            gt_names = set(info['gt_names'])
+        gt_names = set(info['gt_names'])
 
         cat_ids = []
         for name in gt_names:

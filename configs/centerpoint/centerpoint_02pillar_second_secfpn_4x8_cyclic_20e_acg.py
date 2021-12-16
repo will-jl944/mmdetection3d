@@ -170,7 +170,6 @@ data = dict(
             pipeline=train_pipeline,
             classes=class_names,
             test_mode=False,
-            use_valid_flag=True,
             # we use box_type_3d='LiDAR' in kitti and nuscenes dataset
             # and box_type_3d='Depth' in sunrgbd and scannet dataset.
             box_type_3d='LiDAR')),
