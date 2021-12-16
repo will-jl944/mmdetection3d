@@ -50,9 +50,11 @@ class AcgDataset(Custom3DDataset):
                  classes=None,
                  modality=None,
                  box_type_3d='LiDAR',
+                 use_valid_flag=False,
                  filter_empty_gt=True,
                  test_mode=False,
                  pcd_limit_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]):
+        self.use_valid_flag = use_valid_flag
         super().__init__(
             data_root=data_root,
             ann_file=ann_file,
@@ -68,6 +70,30 @@ class AcgDataset(Custom3DDataset):
         assert self.modality is not None
         self.pcd_limit_range = pcd_limit_range
         self.pts_prefix = pts_prefix
+
+    def get_cat_ids(self, idx):
+        """Get category distribution of single scene.
+
+        Args:
+            idx (int): Index of the data_info.
+
+        Returns:
+            dict[list]: for each category, if the current scene
+                contains such boxes, store a list containing idx,
+                otherwise, store empty list.
+        """
+        info = self.data_infos[idx]
+        if self.use_valid_flag:
+            mask = info['valid_flag']
+            gt_names = set(info['gt_names'][mask])
+        else:
+            gt_names = set(info['gt_names'])
+
+        cat_ids = []
+        for name in gt_names:
+            if name in self.CLASSES:
+                cat_ids.append(self.cat2id[name])
+        return cat_ids
 
     def get_data_info(self, index):
         """Get data info according to the given index.
