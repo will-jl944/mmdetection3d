@@ -6,7 +6,8 @@ _base_ = [
 
 # If point cloud range is changed, the models should also change their point
 # cloud range accordingly
-point_cloud_range = [-75.2, -75.2, -5, 75.2, 75.2, 4]   # TODO: param tuning
+point_cloud_range = [-51.2, -51.2, -5.0,
+                     51.2, 51.2, 3.0]   # TODO: param tuning
 # For nuScenes we usually do 10-class detection
 class_names = ['barrier', 'bus', 'car', 'emergencyvehicle',
                'trafficcone', 'trailer', 'truck', 'van1', 'van2']
@@ -29,16 +30,16 @@ db_sampler = dict(
     rate=1.0,
     prepare=dict(
         filter_by_difficulty=[-1],
-        filter_by_min_points=dict(
-            barrier=5,
-            bus=5,
-            car=5,
-            emergencyvehicle=5,
-            trafficcone=5,
-            trailer=5,
-            truck=5,
-            van1=5,
-            van2=5)   # TODO: param tuning
+    #     filter_by_min_points=dict(
+    #         barrier=5,
+    #         bus=5,
+    #         car=5,
+    #         emergencyvehicle=5,
+    #         trafficcone=5,
+    #         trailer=5,
+    #         truck=5,
+    #         van1=5,
+    #         van2=5)   # TODO: param tuning
     ),
     classes=class_names,
     sample_groups=dict(

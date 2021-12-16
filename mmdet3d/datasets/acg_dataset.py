@@ -81,7 +81,8 @@ class AcgDataset(Custom3DDataset):
                 otherwise, store empty list.
         """
         info = self.data_infos[idx]
-        gt_names = set(info['gt_names'])
+        # print(info['annos'].keys())
+        gt_names = set(info['annos']['name'])
 
         cat_ids = []
         for name in gt_names:

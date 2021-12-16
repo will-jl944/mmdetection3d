@@ -4,7 +4,7 @@ checkpoint_config = dict(interval=1)
 # For more loggers see
 # https://mmcv.readthedocs.io/en/latest/api.html#mmcv.runner.LoggerHook
 log_config = dict(
-    interval=50,
+    interval=10,
     hooks=[
         dict(type='TextLoggerHook'),
         dict(type='TensorboardLoggerHook')
@@ -15,4 +15,4 @@ log_level = 'INFO'
 work_dir = None
 load_from = None
 resume_from = None
-workflow = [('train', 1)]
+workflow = [('train', 20)]

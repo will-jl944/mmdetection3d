@@ -5,7 +5,7 @@ model = dict(
         max_num_points=20, voxel_size=voxel_size, max_voxels=(30000, 40000)),
     pts_voxel_encoder=dict(
         type='PillarFeatureNet',
-        in_channels=5,
+        in_channels=3,
         feat_channels=[64],
         with_distance=False,
         voxel_size=(0.2, 0.2, 8),
@@ -33,11 +33,11 @@ model = dict(
         type='CenterHead',
         in_channels=sum([128, 128, 128]),
         tasks=[
-            dict(num_class=10, class_names=['barrier', 'bus', 'car', 'emergencyvehicle',
+            dict(num_class=9, class_names=['barrier', 'bus', 'car', 'emergencyvehicle',
                                             'trafficcone', 'trailer', 'truck', 'van1', 'van2'])
         ],
         common_heads=dict(
-            reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2), vel=(2, 2)),
+            reg=(2, 2), height=(1, 2), dim=(3, 2), rot=(2, 2)),
         share_conv_channel=64,
         bbox_coder=dict(
             type='CenterPointBBoxCoder',
@@ -46,7 +46,7 @@ model = dict(
             score_threshold=0.1,
             out_size_factor=4,
             voxel_size=voxel_size[:2],
-            code_size=9),
+            code_size=7),
         separate_head=dict(
             type='SeparateHead', init_bias=-2.19, final_kernel=3),
         loss_cls=dict(type='GaussianFocalLoss', reduction='mean'),
@@ -62,7 +62,7 @@ model = dict(
             gaussian_overlap=0.1,
             max_objs=500,
             min_radius=2,
-            code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 0.2, 0.2])),
+            code_weights=[1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])),
     test_cfg=dict(
         pts=dict(
             post_center_limit_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],

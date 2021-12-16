@@ -22,7 +22,7 @@ model = dict(
     test_cfg=dict(pts=dict(pc_range=point_cloud_range[:2])))
 
 dataset_type = 'NuScenesDataset'
-data_root = 'data/nuscenes/'
+data_root = '/home/data/nuscenes/'
 file_client_args = dict(backend='disk')
 
 db_sampler = dict(
