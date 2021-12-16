@@ -45,8 +45,8 @@ def create_nuscenes_infos(root_path,
     available_vers = ['v1.0-trainval', 'v1.0-test', 'v1.0-mini']
     assert version in available_vers
     if version == 'v1.0-trainval':
-        train_scenes = splits.train
-        val_scenes = splits.val
+        train_scenes = splits.train  # list of train scenes' names
+        val_scenes = splits.val  # list of val scenes' names
     elif version == 'v1.0-test':
         train_scenes = splits.test
         val_scenes = []
@@ -56,7 +56,7 @@ def create_nuscenes_infos(root_path,
     else:
         raise ValueError('unknown')
 
-    # filter existing scenes.
+    # filter existing scenes (scenes that LiDAR path exists).
     available_scenes = get_available_scenes(nusc)
     available_scene_names = [s['name'] for s in available_scenes]
     train_scenes = list(
