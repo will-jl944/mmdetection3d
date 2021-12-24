@@ -129,9 +129,9 @@ def single_gpu_test(model,
                         rot_axis = 2
                         yaw[rot_axis] = -bbox3d[b, 6]
                         rot_mat = geometry.get_rotation_matrix_from_xyz(yaw)
-                        front = rot_mat[:, 0]
+                        front = rot_mat[:, 1]
                         up = rot_mat[:, 2]
-                        left = rot_mat[:, 1]
+                        left = -rot_mat[:, 0]
 
                         center[rot_axis] += size[rot_axis] / \
                                             2  # bottom center to gravity center
@@ -153,7 +153,7 @@ def single_gpu_test(model,
                             front=front,
                             up=up,
                             left=left,
-                            size=size[[1, 2, 0]],
+                            size=size[[0, 2, 1]],
                             confidence=1.,
                             label_class=k
                         )
