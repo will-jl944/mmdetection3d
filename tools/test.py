@@ -41,6 +41,8 @@ def parse_args():
         help='evaluation metrics, which depends on the dataset, e.g., "bbox",'
         ' "segm", "proposal" for COCO, and "mAP", "recall" for PASCAL VOC')
     parser.add_argument('--show', action='store_true', help='show results')
+    parser.add_argument('--tb-show', action='store_true', help='show results using tensorboard')
+    parser.add_argument('--with2d', action='store_true', help='show results along with camera images')
     parser.add_argument(
         '--show-dir', help='directory where results will be saved')
     parser.add_argument(
@@ -184,7 +186,7 @@ def main():
 
     if not distributed:
         model = MMDataParallel(model, device_ids=[0])
-        outputs = single_gpu_test(model, data_loader, args.show, args.show_dir)
+        outputs = single_gpu_test(model, data_loader, args.show, args.tb_show, args.show_dir, with2d=args.with2d)
     else:
         model = MMDistributedDataParallel(
             model.cuda(),

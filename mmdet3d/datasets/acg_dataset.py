@@ -106,7 +106,26 @@ class AcgDataset(Custom3DDataset):
         sample_idx = info['image']['image_idx']
 
         pts_filename = info['point_cloud']['velodyne_path']
-        input_dict = dict(sample_idx=sample_idx, pts_filename=pts_filename)
+        input_dict = dict(sample_idx=sample_idx,
+                          pts_filename=pts_filename,
+                          img_info=info['image'])
+        image_paths = []
+        image_shapes = []
+        image_scales = []
+        image_calibs = []
+        for cam_type, cam_info in info['cams'].items():
+            image_paths.append(cam_info['data_path'])
+            image_shapes.append(cam_info['image_shape'])
+            image_scales.append(cam_info['image_scale'])
+            image_calibs.append(cam_info['calib'])
+
+        input_dict.update(
+            dict(
+                img_filename=image_paths,
+                image_shapes=image_shapes,
+                image_scales=image_scales,
+                image_calibs=image_calibs,
+            ))
 
         if not self.test_mode:
             annos = self.get_ann_info(index)

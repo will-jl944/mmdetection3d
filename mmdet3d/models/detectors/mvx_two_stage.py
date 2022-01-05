@@ -8,7 +8,7 @@ from os import path as osp
 from torch.nn import functional as F
 
 from mmdet3d.core import (Box3DMode, Coord3DMode, bbox3d2result,
-                          merge_aug_bboxes_3d, show_result)
+                          merge_aug_bboxes_3d, show_result, LiDARInstance3DBoxes)
 from mmdet3d.ops import Voxelization
 from mmdet.core import multi_apply
 from mmdet.models import DETECTORS
@@ -454,7 +454,7 @@ class MVXTwoStageDetector(Base3DDetector):
                                             self.pts_bbox_head.test_cfg)
         return merged_bboxes
 
-    def show_results(self, data, result, out_dir):
+    def show_results(self, data, result, out_dir, show, score_thr, with2d=False):
         """Results visualization.
 
         Args:
@@ -475,9 +475,27 @@ class MVXTwoStageDetector(Base3DDetector):
                     'pts_filename']
                 box_mode_3d = data['img_metas'][0]._data[0][batch_id][
                     'box_mode_3d']
+                if with2d:
+                    img_filename = data['img_metas'][0]._data[0][batch_id][
+                        'img_filename']
+                    image_shapes = data['img_metas'][0]._data[0][batch_id][
+                        'image_shapes']
+                    image_scales = data['img_metas'][0]._data[0][batch_id][
+                        'image_scales']
+                    image_calibs = data['img_metas'][0]._data[0][batch_id][
+                        'image_calibs']
+                else:
+                    img_filename, image_shapes, image_scales, image_calibs = None, None, None, None
             elif mmcv.is_list_of(data['img_metas'][0], dict):
                 pts_filename = data['img_metas'][0][batch_id]['pts_filename']
                 box_mode_3d = data['img_metas'][0][batch_id]['box_mode_3d']
+                if with2d:
+                    img_filename = data['img_metas'][0][batch_id]['img_filename']
+                    image_shapes = data['img_metas'][0][batch_id]['image_shapes']
+                    image_scales = data['img_metas'][0][batch_id]['image_scales']
+                    image_calibs = data['img_metas'][0][batch_id]['image_calibs']
+                else:
+                    img_filename, image_shapes, image_scales, image_calibs = None, None, None, None
             else:
                 ValueError(
                     f"Unsupported data type {type(data['img_metas'][0])} "
@@ -485,9 +503,11 @@ class MVXTwoStageDetector(Base3DDetector):
             file_name = osp.split(pts_filename)[-1].split('.')[0]
 
             assert out_dir is not None, 'Expect out_dir, got none.'
-            inds = result[batch_id]['pts_bbox']['scores_3d'] > 0.1
+            inds = result[batch_id]['pts_bbox']['scores_3d'] > score_thr
             pred_bboxes = result[batch_id]['pts_bbox']['boxes_3d'][inds]
 
+            if with2d:
+                corners = pred_bboxes.corners().cpu().numpy()
             # for now we convert points and bbox into depth mode
             if (box_mode_3d == Box3DMode.CAM) or (box_mode_3d
                                                   == Box3DMode.LIDAR):
@@ -500,4 +520,10 @@ class MVXTwoStageDetector(Base3DDetector):
                     f'Unsupported box_mode_3d {box_mode_3d} for convertion!')
 
             pred_bboxes = pred_bboxes.tensor.cpu().numpy()
-            show_result(points, None, pred_bboxes, out_dir, file_name)
+            show_result(points=points, gt_bboxes=None, pred_bboxes=pred_bboxes,
+                        corners=corners,
+                        img_filename=img_filename,
+                        image_shapes=image_shapes,
+                        image_scales=image_scales,
+                        image_calibs=image_calibs,
+                        out_dir=out_dir, show=show, filename=file_name)

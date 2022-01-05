@@ -3,9 +3,59 @@ import mmcv
 import numpy as np
 import trimesh
 from os import path as osp
-
+from pyquaternion import Quaternion
+from mmdet3d.core import Box3DMode
 from .image_vis import (draw_camera_bbox3d_on_img, draw_depth_bbox3d_on_img,
                         draw_lidar_bbox3d_on_img)
+import cv2
+
+
+def velo2img(point, cam2velo, cam2img, distort=False, dist_coef=None):
+    """
+    Project a 3D point in Lidar coordinate on 2D camera image.
+    """
+    # velo -> cam
+    Tx, Ty, Tz, Rx, Ry, Rz, Rw = cam2velo
+    point = Quaternion(a=Rw, b=Rx, c=Ry, d=Rz).inverse.rotate(point - np.asarray([Tx, Ty, Tz]))
+    point = point / point[-1]
+    if distort:
+        # distort
+        x_p, y_p = point[:2]
+        k1, k2, p1, p2, k3 = dist_coef
+        r_sq = x_p**2 + y_p**2
+        x_p = x_p * (1+k1*r_sq+k2*r_sq**2+k3*r_sq**3) + 2*p1*x_p*y_p + p2*(r_sq+2*x_p**2)
+        y_p = y_p * (1+k1*r_sq+k2*r_sq**2+k3*r_sq**3) + p1*(r_sq+2*y_p**2) + 2*p2*x_p*y_p
+        point = np.asarray([x_p, y_p, 1])
+    # cam -> image
+    point = cam2img.reshape(3, 3) @ point
+    return point[:2]
+
+
+def draw_3dbox(image, coords, color=(0, 0, 255), thickness=1):
+    image = cv2.imread(image)
+    im_h, im_w, _ = image.shape
+    for obj in coords:
+        rear_bottom_left, rear_up_left, rear_up_right, rear_bottom_right, \
+        front_bottom_left, front_up_left, front_up_right, front_bottom_right = obj
+        if 0 <= rear_up_left[0] < im_w and 0 <= rear_bottom_right[0] < im_w \
+                and 0 <= rear_up_left[1] < im_h and 0 <= rear_bottom_right[1] < im_h\
+                and 0 <= front_up_left[0] < im_w and 0 <= front_bottom_right[0] < im_w \
+                and 0 <= front_up_left[1] < im_h and 0 <= front_bottom_right[1] < im_h:
+            cv2.line(image, rear_bottom_left, front_bottom_left, color=color, thickness=thickness)
+            cv2.line(image, rear_up_left, front_up_left, color=color, thickness=thickness)
+            cv2.line(image, rear_up_right, front_up_right, color=color, thickness=thickness)
+            cv2.line(image, rear_bottom_right, front_bottom_right, color=color, thickness=thickness)
+
+            cv2.line(image, rear_bottom_left, rear_up_left, color=color, thickness=thickness)
+            cv2.line(image, rear_up_left, rear_up_right, color=color, thickness=thickness)
+            cv2.line(image, rear_up_right, rear_bottom_right, color=color, thickness=thickness)
+            cv2.line(image, rear_bottom_right, rear_bottom_left, color=color, thickness=thickness)
+
+            cv2.line(image, front_bottom_left, front_up_left, color=color, thickness=thickness)
+            cv2.line(image, front_up_left, front_up_right, color=color, thickness=thickness)
+            cv2.line(image, front_up_right, front_bottom_right, color=color, thickness=thickness)
+            cv2.line(image, front_bottom_right, front_bottom_left, color=color, thickness=thickness)
+    return image
 
 
 def _write_obj(points, out_filename):
@@ -79,7 +129,13 @@ def show_result(points,
                 filename,
                 show=False,
                 snapshot=False,
-                pred_labels=None):
+                pred_labels=None,
+                img_filename=None,
+                image_shapes=None,
+                image_scales=None,
+                image_calibs=None,
+                corners=None
+                ):
     """Convert results into format that is directly readable for meshlab.
 
     Args:
@@ -96,6 +152,25 @@ def show_result(points,
     """
     result_path = osp.join(out_dir, filename)
     mmcv.mkdir_or_exist(result_path)
+    cam_images = {}
+    if img_filename is not None:
+        cams = ['narrow', 'obstacle', 'wide', 'left-fisheye', 'right-fisheye',
+                'spherical-left-backward', 'spherical-right-backward']
+        for cam_type, image, shape, scale, calib in zip(cams, img_filename, image_shapes, image_scales, image_calibs):
+            cam2velo = calib['cam2velo']
+            if 'dist_coef' in calib:
+                distort = True
+                dist_coef = calib['dist_coef']
+            else:
+                distort = False
+                dist_coef = None
+            cam2img = calib['cam2img']
+            im_coords = np.apply_along_axis(velo2img, 2, corners, cam2velo, cam2img, distort, dist_coef)
+            im = draw_3dbox(image, np.rint(im_coords).astype(int))
+            cam_images[cam_type] = im
+            if show:
+                cv2.imshow(cam_type, im)
+
 
     if show:
         from .open3d_vis import Visualizer
@@ -106,7 +181,7 @@ def show_result(points,
                 vis.add_bboxes(bbox3d=pred_bboxes)
             else:
                 palette = np.random.randint(
-                    0, 255, size=(pred_labels.max() + 1, 3)) / 256
+                    0, 255, size=(pred_labels.max() + 1, 3)) / 255
                 labelDict = {}
                 for j in range(len(pred_labels)):
                     i = int(pred_labels[j].numpy())
@@ -143,6 +218,10 @@ def show_result(points,
         pred_bboxes[:, 6] *= -1
         _write_oriented_bbox(pred_bboxes,
                              osp.join(result_path, f'{filename}_pred.obj'))
+
+    if cam_images:
+        for cam_type, im in cam_images.items():
+            cv2.imwrite(osp.join(result_path, f'{filename}_{cam_type}.jpg'), im)
 
 
 def show_seg_result(points,
