@@ -169,7 +169,8 @@ def single_gpu_test(model,
                 out_dir=out_dir,
                 show=show,
                 score_thr=show_score_thr,
-                with2d=with2d)
+                with2d=with2d,
+                gt_bboxes=dataset.get_ann_info(step)['gt_bboxes_3d'])
         results.extend(result)
 
         batch_size = len(result)

@@ -454,7 +454,7 @@ class MVXTwoStageDetector(Base3DDetector):
                                             self.pts_bbox_head.test_cfg)
         return merged_bboxes
 
-    def show_results(self, data, result, out_dir, show, score_thr, with2d=False):
+    def show_results(self, data, result, out_dir, show, score_thr, with2d=False, gt_bboxes=None):
         """Results visualization.
 
         Args:
@@ -507,7 +507,7 @@ class MVXTwoStageDetector(Base3DDetector):
             pred_bboxes = result[batch_id]['pts_bbox']['boxes_3d'][inds]
 
             if with2d:
-                corners = pred_bboxes.corners().cpu().numpy()
+                corners = pred_bboxes.corners.cpu().numpy()
             # for now we convert points and bbox into depth mode
             if (box_mode_3d == Box3DMode.CAM) or (box_mode_3d
                                                   == Box3DMode.LIDAR):
@@ -520,10 +520,14 @@ class MVXTwoStageDetector(Base3DDetector):
                     f'Unsupported box_mode_3d {box_mode_3d} for convertion!')
 
             pred_bboxes = pred_bboxes.tensor.cpu().numpy()
-            show_result(points=points, gt_bboxes=None, pred_bboxes=pred_bboxes,
+            show_result(points=points,
+                        gt_bboxes=gt_bboxes,
+                        pred_bboxes=pred_bboxes,
                         corners=corners,
                         img_filename=img_filename,
                         image_shapes=image_shapes,
                         image_scales=image_scales,
                         image_calibs=image_calibs,
-                        out_dir=out_dir, show=show, filename=file_name)
+                        out_dir=out_dir,
+                        show=show,
+                        filename=file_name)

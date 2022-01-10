@@ -153,6 +153,7 @@ def show_result(points,
     result_path = osp.join(out_dir, filename)
     mmcv.mkdir_or_exist(result_path)
     cam_images = {}
+    gt_corners = gt_bboxes.corners.cpu().numpy()
     if img_filename is not None:
         cams = ['narrow', 'obstacle', 'wide', 'left-fisheye', 'right-fisheye',
                 'spherical-left-backward', 'spherical-right-backward']
@@ -166,7 +167,9 @@ def show_result(points,
                 dist_coef = None
             cam2img = calib['cam2img']
             im_coords = np.apply_along_axis(velo2img, 2, corners, cam2velo, cam2img, distort, dist_coef)
+            gt_im_coords = np.apply_along_axis(velo2img, 2, gt_corners, cam2velo, cam2img, distort, dist_coef)
             im = draw_3dbox(image, np.rint(im_coords).astype(int))
+            im = draw_3dbox(im, np.rint(gt_im_coords).astype(int), color=(0, 255, 0))
             cam_images[cam_type] = im
             if show:
                 cv2.imshow(cam_type, im)
