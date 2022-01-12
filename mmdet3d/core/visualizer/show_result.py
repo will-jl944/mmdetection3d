@@ -192,27 +192,31 @@ def show_result(points,
             else:
                 distort = False
                 dist_coef = None
-            pred_cam_coords = np.apply_along_axis(velo2cam, 2, pred_corners, cam2velo)   # [N, 8, 3]
+
+            # visualize prediction
+            if pred_corners is not None:
+                pred_cam_coords = np.apply_along_axis(velo2cam, 2, pred_corners, cam2velo)   # [N, 8, 3]
+                # select the objects which have at least one corner with positive z
+                pred_indice = np.any(pred_cam_coords[..., -1] > 0, axis=-1)
+                pred_cam_coords = pred_cam_coords[pred_indice]
+                selected_pred_labels = pred_labels[pred_indice]
+                selected_pred_scores = pred_scores[pred_indice]
+                if pred_cam_coords.size != 0:
+                    pred_im_coords = np.apply_along_axis(cam2img, 2, pred_cam_coords, calib['cam2img'], distort,
+                                                         dist_coef)
+                    image = draw_3dbox(image, np.rint(pred_im_coords).astype(int), labels=selected_pred_labels,
+                                       scores=selected_pred_scores)
+
+            # visualize ground truth
             gt_cam_coords = np.apply_along_axis(velo2cam, 2, gt_corners, cam2velo)   # [N, 8, 3]
-
             # select the objects which have at least one corner with positive z
-            pred_indice = np.any(pred_cam_coords[..., -1] > 0, axis=-1)
-            pred_cam_coords = pred_cam_coords[pred_indice]
             gt_cam_coords = gt_cam_coords[np.any(gt_cam_coords[..., -1] > 0, axis=-1)]
-
-            selected_pred_labels = pred_labels[pred_indice]
-            selected_pred_scores = pred_scores[pred_indice]
-
-            if pred_cam_coords.size != 0:
-                pred_im_coords = np.apply_along_axis(cam2img, 2, pred_cam_coords, calib['cam2img'], distort, dist_coef)
-                image = draw_3dbox(image, np.rint(pred_im_coords).astype(int), labels=selected_pred_labels, scores=selected_pred_scores)
             if gt_cam_coords.size != 0:
                 gt_im_coords = np.apply_along_axis(cam2img, 2, gt_cam_coords, calib['cam2img'], distort, dist_coef)
                 image = draw_3dbox(image, np.rint(gt_im_coords).astype(int), color=(0, 255, 0))
             cam_images[cam_type] = image
             if show:
                 cv2.imshow(cam_type, image)
-
 
     if show:
         from .open3d_vis import Visualizer
