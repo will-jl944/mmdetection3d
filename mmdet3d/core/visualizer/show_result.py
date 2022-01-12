@@ -10,51 +10,76 @@ from .image_vis import (draw_camera_bbox3d_on_img, draw_depth_bbox3d_on_img,
 import cv2
 
 
-def velo2img(point, cam2velo, cam2img, distort=False, dist_coef=None):
+def velo2cam(point, cam2velo):
     """
-    Project a 3D point in Lidar coordinate on 2D camera image.
-    """
-    # velo -> cam
+        Convert a 3D point in Lidar coordinate to Camera coordinate.
+        """
     Tx, Ty, Tz, Rx, Ry, Rz, Rw = cam2velo
     point = Quaternion(a=Rw, b=Rx, c=Ry, d=Rz).inverse.rotate(point - np.asarray([Tx, Ty, Tz]))
+
+    return point
+
+
+def cam2img(point, cam2img, distort=False, dist_coef=None):
     point = point / point[-1]
     if distort:
         # distort
         x_p, y_p = point[:2]
         k1, k2, p1, p2, k3 = dist_coef
-        r_sq = x_p**2 + y_p**2
-        x_p = x_p * (1+k1*r_sq+k2*r_sq**2+k3*r_sq**3) + 2*p1*x_p*y_p + p2*(r_sq+2*x_p**2)
-        y_p = y_p * (1+k1*r_sq+k2*r_sq**2+k3*r_sq**3) + p1*(r_sq+2*y_p**2) + 2*p2*x_p*y_p
+        r_sq = x_p ** 2 + y_p ** 2
+        x_p = x_p * (1 + k1 * r_sq + k2 * r_sq ** 2 + k3 * r_sq ** 3) + 2 * p1 * x_p * y_p + p2 * (r_sq + 2 * x_p ** 2)
+        y_p = y_p * (1 + k1 * r_sq + k2 * r_sq ** 2 + k3 * r_sq ** 3) + p1 * (r_sq + 2 * y_p ** 2) + 2 * p2 * x_p * y_p
         point = np.asarray([x_p, y_p, 1])
     # cam -> image
     point = cam2img.reshape(3, 3) @ point
     return point[:2]
 
 
-def draw_3dbox(image, coords, color=(0, 0, 255), thickness=1):
-    image = cv2.imread(image)
+def draw_3dbox(image, coords, color=(0, 0, 255), thickness=1, labels=None, scores=None):
+    CLASSES = ('barrier', 'bus', 'car', 'emergencyvehicle',
+               'trafficcone', 'trailer', 'truck', 'van1', 'van2')
+    if isinstance(image, str):
+        image = cv2.imread(image)
     im_h, im_w, _ = image.shape
-    for obj in coords:
+    for i, obj in enumerate(coords):
+        obj[:, 0] = np.clip(obj[:, 0], 0, im_w)
+        obj[:, 1] = np.clip(obj[:, 1], 0, im_h)
         rear_bottom_left, rear_up_left, rear_up_right, rear_bottom_right, \
         front_bottom_left, front_up_left, front_up_right, front_bottom_right = obj
-        if 0 <= rear_up_left[0] < im_w and 0 <= rear_bottom_right[0] < im_w \
-                and 0 <= rear_up_left[1] < im_h and 0 <= rear_bottom_right[1] < im_h\
-                and 0 <= front_up_left[0] < im_w and 0 <= front_bottom_right[0] < im_w \
-                and 0 <= front_up_left[1] < im_h and 0 <= front_bottom_right[1] < im_h:
-            cv2.line(image, rear_bottom_left, front_bottom_left, color=color, thickness=thickness)
-            cv2.line(image, rear_up_left, front_up_left, color=color, thickness=thickness)
-            cv2.line(image, rear_up_right, front_up_right, color=color, thickness=thickness)
-            cv2.line(image, rear_bottom_right, front_bottom_right, color=color, thickness=thickness)
 
-            cv2.line(image, rear_bottom_left, rear_up_left, color=color, thickness=thickness)
-            cv2.line(image, rear_up_left, rear_up_right, color=color, thickness=thickness)
-            cv2.line(image, rear_up_right, rear_bottom_right, color=color, thickness=thickness)
-            cv2.line(image, rear_bottom_right, rear_bottom_left, color=color, thickness=thickness)
+        cv2.line(image, rear_bottom_left, front_bottom_left, color=color, thickness=thickness)
+        cv2.line(image, rear_up_left, front_up_left, color=color, thickness=thickness)
+        cv2.line(image, rear_up_right, front_up_right, color=color, thickness=thickness)
+        cv2.line(image, rear_bottom_right, front_bottom_right, color=color, thickness=thickness)
 
-            cv2.line(image, front_bottom_left, front_up_left, color=color, thickness=thickness)
-            cv2.line(image, front_up_left, front_up_right, color=color, thickness=thickness)
-            cv2.line(image, front_up_right, front_bottom_right, color=color, thickness=thickness)
-            cv2.line(image, front_bottom_right, front_bottom_left, color=color, thickness=thickness)
+        cv2.line(image, rear_bottom_left, rear_up_left, color=color, thickness=thickness)
+        cv2.line(image, rear_up_left, rear_up_right, color=color, thickness=thickness)
+        cv2.line(image, rear_up_right, rear_bottom_right, color=color, thickness=thickness)
+        cv2.line(image, rear_bottom_right, rear_bottom_left, color=color, thickness=thickness)
+
+        cv2.line(image, front_bottom_left, front_up_left, color=color, thickness=thickness)
+        cv2.line(image, front_up_left, front_up_right, color=color, thickness=thickness)
+        cv2.line(image, front_up_right, front_bottom_right, color=color, thickness=thickness)
+        cv2.line(image, front_bottom_right, front_bottom_left, color=color, thickness=thickness)
+
+        if labels is not None:
+            label_pos = rear_up_left
+            if scores is not None:
+                text = "{}: {}".format(CLASSES[labels[i]], scores[i])
+            else:
+                text = "{}".format(CLASSES[labels[i]])
+            (tw, th), baseline = cv2.getTextSize(
+                text,
+                fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                fontScale=.7,
+                thickness=1)
+            cv2.putText(image, text, (label_pos[0], label_pos[1] + th),
+                        fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                        fontScale=.7,
+                        color=color,
+                        thickness=1,
+                        lineType=cv2.LINE_AA)
+
     return image
 
 
@@ -130,11 +155,12 @@ def show_result(points,
                 show=False,
                 snapshot=False,
                 pred_labels=None,
+                pred_scores=None,
                 img_filename=None,
                 image_shapes=None,
                 image_scales=None,
                 image_calibs=None,
-                corners=None
+                pred_corners=None
                 ):
     """Convert results into format that is directly readable for meshlab.
 
@@ -158,6 +184,7 @@ def show_result(points,
         cams = ['narrow', 'obstacle', 'wide', 'left-fisheye', 'right-fisheye',
                 'spherical-left-backward', 'spherical-right-backward']
         for cam_type, image, shape, scale, calib in zip(cams, img_filename, image_shapes, image_scales, image_calibs):
+            image = cv2.imread(image)
             cam2velo = calib['cam2velo']
             if 'dist_coef' in calib:
                 distort = True
@@ -165,14 +192,26 @@ def show_result(points,
             else:
                 distort = False
                 dist_coef = None
-            cam2img = calib['cam2img']
-            im_coords = np.apply_along_axis(velo2img, 2, corners, cam2velo, cam2img, distort, dist_coef)
-            gt_im_coords = np.apply_along_axis(velo2img, 2, gt_corners, cam2velo, cam2img, distort, dist_coef)
-            im = draw_3dbox(image, np.rint(im_coords).astype(int))
-            im = draw_3dbox(im, np.rint(gt_im_coords).astype(int), color=(0, 255, 0))
-            cam_images[cam_type] = im
+            pred_cam_coords = np.apply_along_axis(velo2cam, 2, pred_corners, cam2velo)   # [N, 8, 3]
+            gt_cam_coords = np.apply_along_axis(velo2cam, 2, gt_corners, cam2velo)   # [N, 8, 3]
+
+            # select the objects which have at least one corner with positive z
+            pred_indice = np.any(pred_cam_coords[..., -1] > 0, axis=-1)
+            pred_cam_coords = pred_cam_coords[pred_indice]
+            gt_cam_coords = gt_cam_coords[np.any(gt_cam_coords[..., -1] > 0, axis=-1)]
+
+            selected_pred_labels = pred_labels[pred_indice]
+            selected_pred_scores = pred_scores[pred_indice]
+
+            if pred_cam_coords.size != 0:
+                pred_im_coords = np.apply_along_axis(cam2img, 2, pred_cam_coords, calib['cam2img'], distort, dist_coef)
+                image = draw_3dbox(image, np.rint(pred_im_coords).astype(int), labels=selected_pred_labels, scores=selected_pred_scores)
+            if gt_cam_coords.size != 0:
+                gt_im_coords = np.apply_along_axis(cam2img, 2, gt_cam_coords, calib['cam2img'], distort, dist_coef)
+                image = draw_3dbox(image, np.rint(gt_im_coords).astype(int), color=(0, 255, 0))
+            cam_images[cam_type] = image
             if show:
-                cv2.imshow(cam_type, im)
+                cv2.imshow(cam_type, image)
 
 
     if show:
@@ -208,6 +247,7 @@ def show_result(points,
 
     if gt_bboxes is not None:
         # bottom center to gravity center
+        gt_bboxes = Box3DMode.convert(gt_bboxes, Box3DMode.LIDAR, Box3DMode.DEPTH).tensor.cpu().numpy()
         gt_bboxes[..., 2] += gt_bboxes[..., 5] / 2
         # the positive direction for yaw in meshlab is clockwise
         gt_bboxes[:, 6] *= -1
